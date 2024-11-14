@@ -18,7 +18,9 @@ class MazeEnv(gym.Env):
         self.num_keys = num_keys
         self.keys_collected = 0
         self.cell_size = cell_size
-
+        # Neighbour cells used for drawing the lines in the maze UP,RIGHT,DOWN,LEFT
+        self.cell_neighbours = np.array([[[0,0,0,0] for _ in range(width)] for _ in range(height)])
+        self.maze = None
         # Action Space (Up, Down, Left, Right)
         self.action_space = spaces.Discrete(4)  # 4 actions: up, down, left, right
 
