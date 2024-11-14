@@ -183,10 +183,109 @@ def generate_hunt_and_kill(height = 10,  width = 10):
             return maze, cell_neighbours
 
 
+def maze_scale_up(cell_neighbours):
+
+    height,width,_ = cell_neighbours.shape
+    new_cell_neighbours = np.array([[[0, 0, 0, 0] for _ in range(width * 2)] for _ in range(height * 2)])
+
+    for i in range(height):
+        for j in range(width):
+
+            # the up left cell keeps the neighbourhood of its parent cell on UP and LEFT
+            new_cell_neighbours[i*2][j*2][0] = cell_neighbours[i][j][0]
+            new_cell_neighbours[i*2][j*2][3] = cell_neighbours[i][j][3]
+            # the other directions will be connected to the scaled up cells
+            new_cell_neighbours[i*2][j*2][2] = 1
+            new_cell_neighbours[i*2][j*2][1] = 1
+
+            # UP RIGHT - same principle
+            new_cell_neighbours[i*2][j*2+1][0] = cell_neighbours[i][j][0]
+            new_cell_neighbours[i*2][j*2+1][1] = cell_neighbours[i][j][1]
+            new_cell_neighbours[i*2][j*2+1][2] = 1
+            new_cell_neighbours[i*2][j*2+1][3] = 1
+
+            # DOWN RIGHT
+            new_cell_neighbours[i*2+1][j*2+1][1] = cell_neighbours[i][j][1]
+            new_cell_neighbours[i*2+1][j*2+1][2] = cell_neighbours[i][j][2]
+            new_cell_neighbours[i*2+1][j*2+1][3] = 1
+            new_cell_neighbours[i*2+1][j*2+1][0] = 1
+
+            # DOWN LEFT
+            new_cell_neighbours[i*2+1][j*2][2] = cell_neighbours[i][j][2]
+            new_cell_neighbours[i*2+1][j*2][3] = cell_neighbours[i][j][3]
+            new_cell_neighbours[i*2+1][j*2][0] = 1
+            new_cell_neighbours[i*2+1][j*2][1] = 1
+
+    return new_cell_neighbours
 
 
 if __name__ == "__main__":
-    maze, n = generate_hunt_and_kill(10, 10)
-    print(maze)
-    print(n)
+
+    import pygame
+    import numpy as np
+
+    # Inițializare Pygame
+    pygame.init()
+
+    # Dimensiuni matrice și fereastră
+    rows, cols = 20,20 # Dimensiunea matricei
+    cell_size = 40  # Dimensiunea fiecărei celule în pixeli
+    _, connections = generate_hunt_and_kill(rows, cols)
+    connections = maze_scale_up(connections)
+    rows *= 2
+    cols *= 2
+    width, height = cols * cell_size, rows * cell_size  # Dimensiuni fereastră
+
+    print(connections)
+
+    # Culori
+    WHITE = (255, 255, 255)
+    BLACK = (0, 0, 0)
+
+    # Creare fereastră Pygame
+    screen = pygame.display.set_mode((width, height))
+    pygame.display.set_caption("Matrice Pygame Grid cu Conexiuni")
+
+
+    # Funcție de desenare a matricei în fereastră
+    def draw_grid_with_connections(connections):
+        screen.fill(WHITE)  # Umple fereastra cu alb
+
+        for row in range(rows):
+            for col in range(cols):
+                x, y = col * cell_size, row * cell_size
+                rect = pygame.Rect(x, y, cell_size, cell_size)
+
+                # Desenează conturul complet al celulei doar dacă nu există conexiuni
+                up, right, down, left = connections[row, col]
+
+                # Desenează peretele de sus dacă nu există conexiune în sus
+                if not up or row == 0:
+                    pygame.draw.line(screen, BLACK, (x, y), (x + cell_size, y), 1)
+                # Desenează peretele din dreapta dacă nu există conexiune în dreapta
+                if not right or col == cols - 1:
+                    pygame.draw.line(screen, BLACK, (x + cell_size, y), (x + cell_size, y + cell_size), 1)
+                # Desenează peretele de jos dacă nu există conexiune în jos
+                if not down or row == rows - 1:
+                    pygame.draw.line(screen, BLACK, (x, y + cell_size), (x + cell_size, y + cell_size), 1)
+                # Desenează peretele din stânga dacă nu există conexiune în stânga
+                if not left or col == 0:
+                    pygame.draw.line(screen, BLACK, (x, y), (x, y + cell_size), 1)
+
+
+    # Loop principal Pygame
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+
+        # Desenare matrice cu conexiuni
+        draw_grid_with_connections(connections)
+
+        # Actualizare ecran
+        pygame.display.flip()
+
+    pygame.quit()
+
 
