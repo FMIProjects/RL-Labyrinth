@@ -40,6 +40,14 @@ def generate_maze(width=10, height=10, num_keys=3):
 
 def generate_hunt_and_kill(height = 10,  width = 10):
 
+    """
+
+    Generates a maze as a 2D array of [bool,bool,bool,bool] elements each bool standing for
+    UP, RIGHT, DOWN, LEFT in this order.
+    Ex: if cells[i][j][1] = True it means that the right cell is not separated by a wall of the current cell
+
+    """
+
     # Each cell is a neighbour of another cell if there is no wall between them
     # The order is:
     #   0->UP,
@@ -180,10 +188,21 @@ def generate_hunt_and_kill(height = 10,  width = 10):
 
         # if the matrix iteration has ended and there is no cell found then we can end the hunt and kill
         if not found:
-            return maze, cell_neighbours
+            return cell_neighbours
 
 
 def maze_scale_up(cell_neighbours):
+
+    """
+
+    Scales up by 4 times an already generated maze and returns its 2d matrix of [bool,bool,bool,bool]
+
+    Parameters:
+        cell_neighbours: np.ndarray of bool of shape (n,m,4)
+
+    Returns:
+        np.ndarray of bool of shape (n*2,m*2,4)
+    """
 
     height,width,_ = cell_neighbours.shape
     new_cell_neighbours = np.array([[[0, 0, 0, 0] for _ in range(width * 2)] for _ in range(height * 2)])
@@ -230,7 +249,7 @@ if __name__ == "__main__":
     # Dimensiuni matrice și fereastră
     rows, cols = 20,20 # Dimensiunea matricei
     cell_size = 40  # Dimensiunea fiecărei celule în pixeli
-    _, connections = generate_hunt_and_kill(rows, cols)
+    connections = generate_hunt_and_kill(rows, cols)
     connections = maze_scale_up(connections)
     rows *= 2
     cols *= 2
