@@ -1,49 +1,12 @@
-# procedural_generator.py
 
 import numpy as np
 
-def generate_maze(width=10, height=10, num_keys=3):
-
-    """
-    Generates a maze as a 2D grid with randomly placed obstacles, keys, and a goal.
-
-    Parameters:
-        width (int): Width of the maze.
-        height (int): Height of the maze.
-        num_keys (int): Number of keys to place in the maze.
-
-    Returns:
-        np.ndarray: 2D array representing the maze.
-    """
-
-    # Initialize maze with empty spaces
-    maze = np.zeros((height, width), dtype=int)
-
-    # Add obstacles (marked as 1)
-    # Here goes to procedural generator
-
-
-    # Place keys (marked as 2)
-    keys_placed = 0
-    while keys_placed < num_keys:
-        x, y = np.random.randint(0, width), np.random.randint(0, height)
-        if maze[y, x] == 0:
-            maze[y, x] = 2  # 2 indicates a key
-            keys_placed += 1
-
-    # Place start (marked as 3) and goal (marked as 4)
-    maze[0, 0] = 3                   # 3 indicates the starting point
-    maze[height - 1, width - 1] = 4  # 4 indicates the goal
-
-    return maze
-
-
-def generate_hunt_and_kill(height = 10,  width = 10):
+def generate_maze(height = 10, width = 10):
 
     """
 
     Generates a maze as a 2D array of [bool,bool,bool,bool] elements each bool standing for
-    UP, RIGHT, DOWN, LEFT in this order.
+    UP, RIGHT, DOWN, LEFT in this order using Hunt and Kill algorithm.
     Ex: if cells[i][j][1] = True it means that the right cell is not separated by a wall of the current cell
 
     """
@@ -58,14 +21,14 @@ def generate_hunt_and_kill(height = 10,  width = 10):
     cell_neighbours = np.array([[[0, 0, 0, 0] for _ in range(width)] for _ in range(height)])
     maze = np.zeros((height,width),dtype=int)
 
-    hunt_and_kill = True
+    the_hunt_is_on = True
 
     # Start from a random point
     row = np.random.randint(0, height)
     col = np.random.randint(0, width)
 
 
-    while hunt_and_kill:
+    while the_hunt_is_on:
 
         # Compute the nearby cells
         up_cell = maze[row - 1, col] if row > 0 else 1
@@ -243,66 +206,55 @@ if __name__ == "__main__":
     import pygame
     import numpy as np
 
-    # Inițializare Pygame
     pygame.init()
 
-    # Dimensiuni matrice și fereastră
-    rows, cols = 20,20 # Dimensiunea matricei
-    cell_size = 40  # Dimensiunea fiecărei celule în pixeli
-    connections = generate_hunt_and_kill(rows, cols)
+    rows, cols = 20,20
+    cell_size = 40
+    connections = generate_maze(rows, cols)
     connections = maze_scale_up(connections)
     rows *= 2
     cols *= 2
-    width, height = cols * cell_size, rows * cell_size  # Dimensiuni fereastră
+    width, height = cols * cell_size, rows * cell_size
 
     print(connections)
 
-    # Culori
     WHITE = (255, 255, 255)
     BLACK = (0, 0, 0)
 
-    # Creare fereastră Pygame
     screen = pygame.display.set_mode((width, height))
     pygame.display.set_caption("Matrice Pygame Grid cu Conexiuni")
 
-
-    # Funcție de desenare a matricei în fereastră
     def draw_grid_with_connections(connections):
-        screen.fill(WHITE)  # Umple fereastra cu alb
+        screen.fill(WHITE)
 
         for row in range(rows):
             for col in range(cols):
                 x, y = col * cell_size, row * cell_size
                 rect = pygame.Rect(x, y, cell_size, cell_size)
 
-                # Desenează conturul complet al celulei doar dacă nu există conexiuni
                 up, right, down, left = connections[row, col]
 
-                # Desenează peretele de sus dacă nu există conexiune în sus
                 if not up or row == 0:
                     pygame.draw.line(screen, BLACK, (x, y), (x + cell_size, y), 1)
-                # Desenează peretele din dreapta dacă nu există conexiune în dreapta
+
                 if not right or col == cols - 1:
                     pygame.draw.line(screen, BLACK, (x + cell_size, y), (x + cell_size, y + cell_size), 1)
-                # Desenează peretele de jos dacă nu există conexiune în jos
+
                 if not down or row == rows - 1:
                     pygame.draw.line(screen, BLACK, (x, y + cell_size), (x + cell_size, y + cell_size), 1)
-                # Desenează peretele din stânga dacă nu există conexiune în stânga
+
                 if not left or col == 0:
                     pygame.draw.line(screen, BLACK, (x, y), (x, y + cell_size), 1)
 
 
-    # Loop principal Pygame
     running = True
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
 
-        # Desenare matrice cu conexiuni
         draw_grid_with_connections(connections)
 
-        # Actualizare ecran
         pygame.display.flip()
 
     pygame.quit()

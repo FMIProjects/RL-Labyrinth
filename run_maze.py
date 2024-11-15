@@ -8,10 +8,9 @@ import sys
 def main():
 
     # Create Environment
-    env = MazeEnv(width=20, height=20, num_keys=70)
+    env = MazeEnv(width=20, height=20, num_keys=5)
     obs = env.reset()
-    print(env.keys_pos)
-    print(env.maze)
+
     done = False
     while not done:
         env.render()
@@ -24,10 +23,8 @@ def main():
         # Sample a random action
         action = env.action_space.sample()
 
-        import time
-        # time.sleep(3)
+        print(f"Action: {action}")
 
-        print(f"Action:{action}")
         obs, reward, done, _ = env.step(action)
         print(f"Reward: {reward}, Done: {done}")
 

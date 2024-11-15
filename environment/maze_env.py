@@ -4,7 +4,7 @@ import gym
 from gym import spaces
 import numpy as np
 import pygame
-from .procedural_generator import generate_hunt_and_kill,maze_scale_up
+from .procedural_generator import generate_maze,maze_scale_up
 class MazeEnv(gym.Env):
     """
     Custom environment for an RL agent navigating a procedurally generated maze.
@@ -14,6 +14,8 @@ class MazeEnv(gym.Env):
 
         assert width % 2 == 0, "Maze width must be even."
         assert height % 2 == 0, "Maze height must be even."
+        assert num_keys <= width * height, "Too many keys for current maze configuration."
+        assert width > 0 and height > 0 and num_keys >= 0 and cell_size > 0, "Parameters values must be positive"
 
         super(MazeEnv, self).__init__()
 
@@ -24,12 +26,13 @@ class MazeEnv(gym.Env):
         self.num_obstacles = 0
         self.keys_collected = 0
         self.cell_size = cell_size
+
         # Neighbour cells used for drawing the lines in the maze UP,RIGHT,DOWN,LEFT
-        self.cell_neighbours = maze_scale_up(generate_hunt_and_kill(self.height//2, self.width//2))
+        self.cell_neighbours = maze_scale_up(generate_maze(self.height // 2, self.width // 2))
         self.maze = np.zeros((self.height, self.width),dtype=int)
 
-        # Action Space (Up, Down, Left, Right)
-        self.action_space = spaces.Discrete(4)  # 4 actions: up, down, left, right
+        # Action Space (Up, Right, Down, Left)
+        self.action_space = spaces.Discrete(4)
 
         # Observation Space
         self.observation_space = spaces.Box(
@@ -56,6 +59,7 @@ class MazeEnv(gym.Env):
         self.GOAL = 2
         self.KEY = 3
         self.OBSTACLE = 4
+        self.AGENT_AND_GOAL = 5
 
         self.UP = 0
         self.RIGHT = 1
@@ -71,8 +75,8 @@ class MazeEnv(gym.Env):
         Reset the environment to its initial state and return the initial observation.
         Randomize start and finish positions.
         """
-        # Generate a new maze layout
-        self.cell_neighbours = maze_scale_up(generate_hunt_and_kill(self.height // 2, self.width // 2))
+        # Generate a new scaled up maze layout
+        self.cell_neighbours = maze_scale_up(generate_maze(self.height // 2, self.width // 2))
         self.maze = np.zeros((self.height, self.width))
 
         # Randomize start position (agent position)
@@ -120,6 +124,8 @@ class MazeEnv(gym.Env):
         row,col = self.agent_pos
         neighbours = self.cell_neighbours[row,col]
 
+        # Check if the agent can go in chosen direction and update its position if possible
+
         if action == self.UP and neighbours[self.UP] == 1:
             row -= 1
 
@@ -134,38 +140,17 @@ class MazeEnv(gym.Env):
 
         self.agent_pos = [row,col]
 
-        print(f"Agent pos: [{row},{col}] -> {self.maze[row,col]}")
-
+        # Check if the agent is in a key position and collect it ig so
         if self.maze[row, col] == self.KEY:
             self.keys_collected += 1
             self.maze[row, col] = 0
             self.keys_pos.remove(self.agent_pos)
-            print(self.keys_pos)
-
-        # x, y = self.agent_pos
-        #
-        # if action == 0 and y > 0:  # Up
-        #     y -= 1
-        # elif action == 1 and y < self.height - 1:  # Down
-        #     y += 1
-        # elif action == 2 and x > 0:  # Left
-        #     x -= 1
-        # elif action == 3 and x < self.width - 1:  # Right
-        #     x += 1
-        #
-        # # Check if the new position is valid (not an obstacle)
-        # if self.maze[y, x] != 1:
-        #     self.agent_pos = [x, y]
-        #
-        # # Check if agent found a key
-        # if self.maze[y, x] == 2:
-        #     self.keys_collected += 1
-        #     self.maze[y, x] = 0
 
         # Check if agent reached the goal and has enough keys
-        done = bool(self.maze[row,col] == self.GOAL and self.keys_collected >= self.num_keys)
+        done = bool(self.agent_pos == self.goal_pos and self.keys_collected >= self.num_keys)
 
-        self.maze[row, col] = self.AGENT
+        # mark the agent state on the cell or the goal and agent state
+        self.maze[row, col] = self.AGENT_AND_GOAL if row == self.agent_pos == self.goal_pos else self.AGENT
 
         # Calculate reward
         reward = 1 if done else -0.1  # Penalty for each move, reward for completion
@@ -177,9 +162,6 @@ class MazeEnv(gym.Env):
         Return the current state of the maze with the agent's position.
         """
 
-        # obs = self.maze.copy()
-        # obs[self.agent_pos[1], self.agent_pos[0]] = 3  # Agent's position marked as 3
-        # obs[self.goal_pos[1], self.goal_pos[0]] = 4  # Goal position marked as 4
         return self.maze
 
     def render(self, mode="human"):
@@ -192,6 +174,7 @@ class MazeEnv(gym.Env):
         BLUE = (0, 0, 255)
         GREEN = (0, 255, 0)
         YELLOW = (255, 215, 0)
+        RED = (255, 0, 0)
 
         if self.screen is None:
             pygame.init()
@@ -207,21 +190,23 @@ class MazeEnv(gym.Env):
                 x, y = col * self.cell_size, row * self.cell_size
                 rect = pygame.Rect(x, y, self.cell_size, self.cell_size)
 
-                # Desenează conturul complet al celulei doar dacă nu există conexiuni
+                # Get the bool values to check where to draw the walls
                 up, right, down, left = self.cell_neighbours[row, col]
 
-                # Desenează peretele de sus dacă nu există conexiune în sus
+                # Draw up line
                 if not up or row == 0:
                     pygame.draw.line(self.screen, BLACK, (x, y), (x + self.cell_size, y), 1)
-                # Desenează peretele din dreapta dacă nu există conexiune în dreapta
+                # Draw right line
                 if not right or col == self.width - 1:
                     pygame.draw.line(self.screen, BLACK, (x + self.cell_size, y), (x + self.cell_size, y + self.cell_size), 1)
-                # Desenează peretele de jos dacă nu există conexiune în jos
+                # Draw down line
                 if not down or row == self.height - 1:
                     pygame.draw.line(self.screen, BLACK, (x, y + self.cell_size), (x + self.cell_size, y + self.cell_size), 1)
-                # Desenează peretele din stânga dacă nu există conexiune în stânga
+                # Draw left line
                 if not left or col == 0:
                     pygame.draw.line(self.screen, BLACK, (x, y), (x, y + self.cell_size), 1)
+
+        # Note: the position values of the agent,goal and keys are stored in the following format [y,x]
 
         # Draw the agent
         agent_rect = pygame.Rect(
@@ -242,6 +227,10 @@ class MazeEnv(gym.Env):
         )
         pygame.draw.rect(self.screen, GREEN, goal_rect)
 
+        # Draw the agent and goal if they are both on the same cell and the keys are still not collected
+        if self.agent_pos == self.goal_pos:
+            pygame.draw.rect(self.screen, RED, goal_rect)
+
         # Draw the keys
 
         for key_pos in self.keys_pos:
@@ -258,37 +247,6 @@ class MazeEnv(gym.Env):
 
         pygame.display.flip()
         self.clock.tick(30)
-        # # Draw the maze
-        # for y in range(self.height):
-        #     for x in range(self.width):
-        #         cell_value = self.maze[y, x]
-        #         rect = pygame.Rect(
-        #             x * self.cell_size,
-        #             y * self.cell_size,
-        #             self.cell_size,
-        #             self.cell_size,
-        #         )
-        #
-        #         if cell_value == 1:    # Obstacle
-        #             pygame.draw.rect(self.screen, (0, 0, 0), rect)
-        #         elif cell_value == 2:  # Key
-        #             pygame.draw.circle(
-        #                 self.screen, (255, 215, 0), rect.center, self.cell_size // 4
-        #             )
-        #         elif cell_value == 4:  # Goal
-        #             pygame.draw.rect(self.screen, (0, 255, 0), rect)
-        #
-        # # Draw the agent
-        # agent_rect = pygame.Rect(
-        #     self.agent_pos[0] * self.cell_size,
-        #     self.agent_pos[1] * self.cell_size,
-        #     self.cell_size,
-        #     self.cell_size,
-        # )
-        # pygame.draw.rect(self.screen, (0, 0, 255), agent_rect)
-        #
-        # pygame.display.flip()
-        # self.clock.tick(30)
 
     def close(self):
         if self.screen is not None:
