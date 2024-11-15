@@ -85,12 +85,15 @@ class MazeEnv(gym.Env):
         # Randomize finish position (goal position) different from start
         self.goal_pos = self.random_empty_cell(exclude=[self.agent_pos])
 
+        # Generate obstacles
+        self.obstacles_pos = []
+        self.num_obstacles = (self.width * self.height) // 128
+        self.distribute_obstacles(self.num_obstacles)
+
         # Randomize the key positions so that each is unique and different from the previously generated elements
         self.keys_pos = []
         for _ in range(self.num_keys):
-            self.keys_pos.append(self.random_empty_cell(exclude=[self.agent_pos, self.goal_pos] + self.keys_pos))
-
-        # TODO find a way to generate the obstacles without breaking the agent
+            self.keys_pos.append(self.random_empty_cell(exclude=[self.agent_pos, self.goal_pos] + self.keys_pos + self.obstacles_pos))
 
         # Place in the maze the elements
 
@@ -102,6 +105,41 @@ class MazeEnv(gym.Env):
 
         self.keys_collected = 0
         return self.get_observation()
+
+    def distribute_obstacles(self,num_obstacles):
+
+        """
+        Distribute a number of maximum num_obstacles on the maze.
+        The higher the obstacles the better the change.
+        Iterate through 4x4 cell blocks and choose whether to place an obstacle in one of the 4.
+        If the 4x4 cell block is chosen then choose again a random 1x1 cell to place an obstacle if that cell is not occupied.
+        """
+
+        # Get the total number of cells and calculate the probability of chosing a 4x4 cell block
+        num_cells = (self.height * self.width) // 4
+        probability = num_obstacles / num_cells
+
+        for i in range(0,self.height,2):
+            for j in range(0,self.width,2):
+
+                coin_flip = np.random.rand()
+                # Continue if the current cell is not chosen
+                if coin_flip >= probability:
+                    continue
+
+                # Choose a random 1x1 cell to place the obstacle if the cell is not occupied by the agent or goal
+                positions = [[i,j],[i,j+1],[i+1,j],[i+1,j+1]]
+                random_index = np.random.randint(4)
+
+                while positions[random_index] == self.agent_pos or positions[random_index] == self.goal_pos:
+                    random_index = np.random.randint(4)
+
+                # Mark the cell
+                chosen_pos = positions[random_index]
+                self.obstacles_pos.append(chosen_pos)
+                self.maze[chosen_pos[0],chosen_pos[1]] = self.OBSTACLE
+                num_obstacles -= 1
+
 
     def random_empty_cell(self, exclude=None):
         """
@@ -146,8 +184,8 @@ class MazeEnv(gym.Env):
             self.maze[row, col] = 0
             self.keys_pos.remove(self.agent_pos)
 
-        # Check if agent reached the goal and has enough keys
-        done = bool(self.agent_pos == self.goal_pos and self.keys_collected >= self.num_keys)
+        # Check if agent reached the goal and has enough keys or wheather the agent has fallen into an obstacle
+        done = bool(self.agent_pos == self.goal_pos and self.keys_collected >= self.num_keys or self.agent_pos in self.obstacles_pos)
 
         # mark the agent state on the cell or the goal and agent state
         self.maze[row, col] = self.AGENT_AND_GOAL if row == self.agent_pos == self.goal_pos else self.AGENT
@@ -175,6 +213,7 @@ class MazeEnv(gym.Env):
         GREEN = (0, 255, 0)
         YELLOW = (255, 215, 0)
         RED = (255, 0, 0)
+        GREY = (128,128,128)
 
         if self.screen is None:
             pygame.init()
@@ -240,10 +279,24 @@ class MazeEnv(gym.Env):
                 self.cell_size,
                 self.cell_size,
             )
+
             pygame.draw.circle(
                 self.screen, YELLOW, key_rect.center, self.cell_size // 4
             )
 
+        # Draw the obstacles
+
+        for obstacle_pos in self.obstacles_pos:
+            obstacle_rect = pygame.Rect(
+                obstacle_pos[1] * self.cell_size,
+                obstacle_pos[0] * self.cell_size,
+                self.cell_size,
+                self.cell_size,
+            )
+
+            pygame.draw.circle(
+                self.screen, GREY, obstacle_rect.center, self.cell_size // 4
+            )
 
         pygame.display.flip()
         self.clock.tick(30)

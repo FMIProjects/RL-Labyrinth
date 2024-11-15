@@ -1,4 +1,5 @@
 # run_maze.py
+import time
 
 from environment.maze_env import MazeEnv
 import pygame
