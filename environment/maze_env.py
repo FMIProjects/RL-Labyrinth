@@ -1,8 +1,10 @@
+from pickletools import uint8
+
 import gym
 from gym import spaces
 import numpy as np
 import pygame
-from .procedural_generator import generate_maze,generate_hunt_and_kill,maze_scale_up
+from .procedural_generator import generate_hunt_and_kill,maze_scale_up
 class MazeEnv(gym.Env):
     """
     Custom environment for an RL agent navigating a procedurally generated maze.
@@ -24,7 +26,7 @@ class MazeEnv(gym.Env):
         self.cell_size = cell_size
         # Neighbour cells used for drawing the lines in the maze UP,RIGHT,DOWN,LEFT
         self.cell_neighbours = maze_scale_up(generate_hunt_and_kill(self.height//2, self.width//2))
-        self.maze = np.zeros((self.height, self.width))
+        self.maze = np.zeros((self.height, self.width),dtype=int)
 
         # Action Space (Up, Down, Left, Right)
         self.action_space = spaces.Discrete(4)  # 4 actions: up, down, left, right
@@ -33,6 +35,8 @@ class MazeEnv(gym.Env):
         self.observation_space = spaces.Box(
             low=0, high=4, shape=(height, width), dtype=np.int32
         )
+
+        # Note: All positions are stored as [row_index,col_index], pygame represents its matrices as [col_index,row_index]
 
         # Initial Agent position
         self.agent_pos = [0, 0]
@@ -90,7 +94,7 @@ class MazeEnv(gym.Env):
         self.maze[self.goal_pos[0], self.goal_pos[1]] = self.GOAL
 
         for key_pos in self.keys_pos:
-            self.maze[key_pos[0], self.keys_pos[1]] = self.KEY
+            self.maze[key_pos[0], key_pos[1]] = self.KEY
 
         self.keys_collected = 0
         return self.get_observation()
@@ -115,7 +119,7 @@ class MazeEnv(gym.Env):
 
         row,col = self.agent_pos
         neighbours = self.cell_neighbours[row,col]
-        print(neighbours)
+
         if action == self.UP and neighbours[self.UP] == 1:
             row -= 1
 
@@ -129,12 +133,14 @@ class MazeEnv(gym.Env):
             col -= 1
 
         self.agent_pos = [row,col]
-        self.maze[row, col] = self.AGENT
+
+        print(f"Agent pos: [{row},{col}] -> {self.maze[row,col]}")
 
         if self.maze[row, col] == self.KEY:
             self.keys_collected += 1
             self.maze[row, col] = 0
-            self.keys_pos = [x for x in self.keys_pos if x[0] != row and x[1] != col]
+            self.keys_pos.remove(self.agent_pos)
+            print(self.keys_pos)
 
         # x, y = self.agent_pos
         #
@@ -158,6 +164,8 @@ class MazeEnv(gym.Env):
 
         # Check if agent reached the goal and has enough keys
         done = bool(self.maze[row,col] == self.GOAL and self.keys_collected >= self.num_keys)
+
+        self.maze[row, col] = self.AGENT
 
         # Calculate reward
         reward = 1 if done else -0.1  # Penalty for each move, reward for completion
@@ -217,8 +225,8 @@ class MazeEnv(gym.Env):
 
         # Draw the agent
         agent_rect = pygame.Rect(
-            self.agent_pos[0] * self.cell_size,
             self.agent_pos[1] * self.cell_size,
+            self.agent_pos[0] * self.cell_size,
             self.cell_size,
             self.cell_size,
         )
@@ -227,8 +235,8 @@ class MazeEnv(gym.Env):
         # Draw the goal
 
         goal_rect = pygame.Rect(
-            self.goal_pos[0] * self.cell_size,
             self.goal_pos[1] * self.cell_size,
+            self.goal_pos[0] * self.cell_size,
             self.cell_size,
             self.cell_size,
         )
@@ -238,12 +246,14 @@ class MazeEnv(gym.Env):
 
         for key_pos in self.keys_pos:
             key_rect = pygame.Rect(
-                key_pos[0] * self.cell_size,
                 key_pos[1] * self.cell_size,
+                key_pos[0] * self.cell_size,
                 self.cell_size,
                 self.cell_size,
             )
-            pygame.draw.rect(self.screen, YELLOW, key_rect)
+            pygame.draw.circle(
+                self.screen, YELLOW, key_rect.center, self.cell_size // 4
+            )
 
 
         pygame.display.flip()
