@@ -1,4 +1,5 @@
 # run_maze.py
+import time
 
 from environment.maze_env import MazeEnv
 import pygame
@@ -8,7 +9,7 @@ import sys
 def main():
 
     # Create Environment
-    env = MazeEnv(width=20, height=20, num_keys=5)
+    env = MazeEnv(width=40, height=40, num_keys=6,distance_type="manhattan")
     obs = env.reset()
 
     done = False
@@ -26,6 +27,11 @@ def main():
         print(f"Action: {action}")
 
         obs, reward, done, _ = env.step(action)
+        _,goal_distance,keys_distances,obstacle_distances = env.get_observation()
+
+        print(f"Goal distance: {goal_distance}")
+        print(f"Keys distances: {keys_distances}")
+        print(f"Obstacle distances: {obstacle_distances}")
         print(f"Reward: {reward}, Done: {done}")
 
     env.close()

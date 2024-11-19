@@ -5,17 +5,20 @@ from gym import spaces
 import numpy as np
 import pygame
 from .procedural_generator import generate_maze,maze_scale_up
+from .distances import euclidean_distance,manhattan_distance
+
 class MazeEnv(gym.Env):
     """
     Custom environment for an RL agent navigating a procedurally generated maze.
     """
 
-    def __init__(self, width=10, height=10, num_keys=3, cell_size=20):
+    def __init__(self, width=10, height=10, num_keys=3, cell_size=20,distance_type = "manhattan"):
 
         assert width % 2 == 0, "Maze width must be even."
         assert height % 2 == 0, "Maze height must be even."
         assert num_keys <= width * height, "Too many keys for current maze configuration."
         assert width > 0 and height > 0 and num_keys >= 0 and cell_size > 0, "Parameters values must be positive"
+        assert distance_type == "euclidean" or distance_type == "manhattan", "Distance type must be either 'euclidian' or 'manhattan'"
 
         super(MazeEnv, self).__init__()
 
@@ -53,6 +56,14 @@ class MazeEnv(gym.Env):
         # Initial obstacle positions
         self.obstacles_pos = None
 
+        # Distances from goals and obstacles
+
+        self.distance_type = distance_type
+
+        self.goal_distance = -1
+        self.keys_distances = []
+        self.obstacles_distances = []
+
         # Macros
 
         self.AGENT = 1
@@ -85,18 +96,27 @@ class MazeEnv(gym.Env):
         # Randomize finish position (goal position) different from start
         self.goal_pos = self.random_empty_cell(exclude=[self.agent_pos])
 
+        # Compute goal distance
+        self.compute_goal_distance()
+
         # Generate obstacles
         self.obstacles_pos = []
         self.num_obstacles = (self.width * self.height) // 128
         self.distribute_obstacles(self.num_obstacles)
 
+        # Compute the obstacle distances
+        self.compute_obstacle_distances()
+
         # Randomize the key positions so that each is unique and different from the previously generated elements
         self.keys_pos = []
         for _ in range(self.num_keys):
-            self.keys_pos.append(self.random_empty_cell(exclude=[self.agent_pos, self.goal_pos] + self.keys_pos + self.obstacles_pos))
+            random_key_pos = self.random_empty_cell(exclude=[self.agent_pos, self.goal_pos] + self.keys_pos + self.obstacles_pos)
+            self.keys_pos.append(random_key_pos)
+
+        # Compute keys distances
+        self.compute_keys_distances()
 
         # Place in the maze the elements
-
         self.maze[self.agent_pos[0],self.agent_pos[1]] = self.AGENT
         self.maze[self.goal_pos[0], self.goal_pos[1]] = self.GOAL
 
@@ -151,8 +171,8 @@ class MazeEnv(gym.Env):
             x = np.random.randint(0, self.width)
             y = np.random.randint(0, self.height)
             if self.maze[y, x] == 0:
-                if exclude is None or [x, y] not in exclude:
-                    return [x, y]
+                if exclude is None or [y, x] not in exclude:
+                    return [y, x]
 
     def step(self, action):
         """
@@ -191,16 +211,56 @@ class MazeEnv(gym.Env):
         self.maze[row, col] = self.AGENT_AND_GOAL if row == self.agent_pos == self.goal_pos else self.AGENT
 
         # Calculate reward
-        reward = 1 if done else -0.1  # Penalty for each move, reward for completion
+        reward = -0.5 if done and self.agent_pos in self.obstacles_pos else 1 if done else 0  # Penalty for each move, reward for completion
+
+        # Recompute distances
+        self.compute_goal_distance()
+        self.compute_obstacle_distances()
+        self.compute_keys_distances()
 
         return self.get_observation(), reward, done, {}
 
+    def compute_goal_distance(self):
+        """
+        Compute the distance between the agent and the goal based on the distance type.
+        """
+        if self.distance_type == "manhattan":
+            self.goal_distance = manhattan_distance(self.agent_pos, self.goal_pos)
+        elif self.distance_type == "euclidean":
+            self.goal_distance = euclidean_distance(self.agent_pos, self.goal_pos)
+
+    def compute_keys_distances(self):
+        """
+        Reset the keys distances list and recompute the distances from the agent to all keys.
+        """
+        self.keys_distances.clear()
+
+        for key_pos in self.keys_pos:
+
+            if self.distance_type == "euclidean":
+                self.keys_distances.append(euclidean_distance(self.agent_pos, key_pos))
+            elif self.distance_type == "manhattan":
+                self.keys_distances.append(manhattan_distance(self.agent_pos, key_pos))
+
+    def compute_obstacle_distances(self):
+        """
+        Reset the obstacle distances list and recompute the distances from the agent to all obstacles.
+        """
+        self.obstacles_distances.clear()
+
+        for obstacle_pos in self.obstacles_pos:
+
+            if self.distance_type == "euclidean":
+                self.obstacles_distances.append(euclidean_distance(self.agent_pos, obstacle_pos))
+            elif self.distance_type == "manhattan":
+                self.obstacles_distances.append(manhattan_distance(self.agent_pos, obstacle_pos))
+
     def get_observation(self):
         """
-        Return the current state of the maze with the agent's position.
+        Return the current state of the maze with the maze configuration, goal distance, keys distances and obstacle distances.
         """
 
-        return self.maze
+        return self.maze,self.goal_distance,self.keys_distances,self.obstacles_distances
 
     def render(self, mode="human"):
         """
