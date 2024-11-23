@@ -1,5 +1,6 @@
 from pickletools import uint8
 
+import random
 import gym
 from gym import spaces
 import numpy as np
@@ -12,7 +13,19 @@ class MazeEnv(gym.Env):
     Custom environment for an RL agent navigating a procedurally generated maze.
     """
 
-    def __init__(self, width=10, height=10, num_keys=3, cell_size=20,distance_type = "manhattan"):
+    def __init__(self, width=10, height=10, num_keys=3, cell_size=20,distance_type = "manhattan", fps=30):
+
+        # Macros
+        self.AGENT = 1
+        self.GOAL = 2
+        self.KEY = 3
+        self.OBSTACLE = 4
+        self.AGENT_AND_GOAL = 5
+
+        self.UP = 0
+        self.RIGHT = 1
+        self.DOWN = 2
+        self.LEFT = 3
 
         assert width % 2 == 0, "Maze width must be even."
         assert height % 2 == 0, "Maze height must be even."
@@ -29,6 +42,7 @@ class MazeEnv(gym.Env):
         self.num_obstacles = 0
         self.keys_collected = 0
         self.cell_size = cell_size
+        self.fps = fps
 
         # Neighbour cells used for drawing the lines in the maze UP,RIGHT,DOWN,LEFT
         self.cell_neighbours = maze_scale_up(generate_maze(self.height // 2, self.width // 2))
@@ -64,22 +78,57 @@ class MazeEnv(gym.Env):
         self.keys_distances = []
         self.obstacles_distances = []
 
-        # Macros
-
-        self.AGENT = 1
-        self.GOAL = 2
-        self.KEY = 3
-        self.OBSTACLE = 4
-        self.AGENT_AND_GOAL = 5
-
-        self.UP = 0
-        self.RIGHT = 1
-        self.DOWN = 2
-        self.LEFT = 3
-
         # Pygame Setup
         self.screen = None
         self.clock = pygame.time.Clock()
+
+        if self.screen is None:
+            pygame.init()
+            self.screen = pygame.display.set_mode(
+                (self.width * self.cell_size, self.height * self.cell_size)
+            )
+            pygame.display.set_caption("Maze Environment")
+
+        # Assets loading
+
+        self.agent_images = {
+        self.UP: pygame.transform.scale(pygame.image.load("assets/agent_up.png").convert_alpha(), (self.cell_size, self.cell_size)),
+        self.RIGHT: pygame.transform.scale(pygame.image.load("assets/agent_right.png").convert_alpha(), (self.cell_size, self.cell_size)),
+        self.DOWN: pygame.transform.scale(pygame.image.load("assets/agent_down.png").convert_alpha(), (self.cell_size, self.cell_size)),
+        self.LEFT: pygame.transform.scale(pygame.image.load("assets/agent_left.png").convert_alpha(), (self.cell_size, self.cell_size))
+        }
+
+        self.agent_direction = self.UP
+        self.background_images = []
+
+        self.ground_images = [
+            pygame.image.load(f"assets/ground{i}.png").convert()
+            for i in range(1, 12)            
+            ]
+
+        self.key_image = pygame.image.load(f"assets/key.png").convert_alpha()
+        self.door_image = pygame.image.load(f"assets/door.png").convert_alpha()
+        self.red_door_image = pygame.image.load(f"assets/red_door.png").convert_alpha()
+        self.obstacle_image = pygame.image.load(f"assets/obstacle.png").convert_alpha()
+
+        # Scale images to cell size
+        self.ground_images = [
+                pygame.transform.scale(img, (self.cell_size, self.cell_size))
+                for img in self.ground_images
+            ]
+
+        self.key_image = pygame.transform.scale(self.key_image, (self.cell_size, self.cell_size))
+        self.door_image = pygame.transform.scale(self.door_image, (self.cell_size, self.cell_size))
+        self.red_door_image = pygame.transform.scale(self.red_door_image, (self.cell_size, self.cell_size))
+        self.obstacle_image = pygame.transform.scale(self.obstacle_image, (self.cell_size, self.cell_size))
+
+        # Fill background with random images
+        for row in range(self.height):
+            for col in range(self.width):
+                x, y = col * self.cell_size, row * self.cell_size
+                random_image = random.choice(self.ground_images)
+                self.background_images.append(random_image)
+                self.screen.blit(random_image, (x, y))
 
     def reset(self):
         """
@@ -182,6 +231,7 @@ class MazeEnv(gym.Env):
         row,col = self.agent_pos
         neighbours = self.cell_neighbours[row,col]
 
+        self.agent_direction = action
         # Check if the agent can go in chosen direction and update its position if possible
 
         if action == self.UP and neighbours[self.UP] == 1:
@@ -274,92 +324,60 @@ class MazeEnv(gym.Env):
         YELLOW = (255, 215, 0)
         RED = (255, 0, 0)
         GREY = (128,128,128)
-
-        if self.screen is None:
-            pygame.init()
-            self.screen = pygame.display.set_mode(
-                (self.width * self.cell_size, self.height * self.cell_size)
-            )
-            pygame.display.set_caption("Maze Environment")
-
-        self.screen.fill(WHITE)
-
+        
+        # Draw background
+        i = 0
         for row in range(self.height):
             for col in range(self.width):
                 x, y = col * self.cell_size, row * self.cell_size
-                rect = pygame.Rect(x, y, self.cell_size, self.cell_size)
+                self.screen.blit(self.background_images[i], (x, y))
+                i+=1
+        
+        # Draw lines
+        for row in range(self.height):
+            for col in range(self.width):
+                x, y = col * self.cell_size, row * self.cell_size
 
                 # Get the bool values to check where to draw the walls
                 up, right, down, left = self.cell_neighbours[row, col]
 
                 # Draw up line
                 if not up or row == 0:
-                    pygame.draw.line(self.screen, BLACK, (x, y), (x + self.cell_size, y), 1)
+                    pygame.draw.line(self.screen, WHITE, (x, y), (x + self.cell_size, y), 3)
                 # Draw right line
                 if not right or col == self.width - 1:
-                    pygame.draw.line(self.screen, BLACK, (x + self.cell_size, y), (x + self.cell_size, y + self.cell_size), 1)
+                    pygame.draw.line(self.screen, WHITE, (x + self.cell_size, y), (x + self.cell_size, y + self.cell_size), 3)
                 # Draw down line
                 if not down or row == self.height - 1:
-                    pygame.draw.line(self.screen, BLACK, (x, y + self.cell_size), (x + self.cell_size, y + self.cell_size), 1)
+                    pygame.draw.line(self.screen, WHITE, (x, y + self.cell_size), (x + self.cell_size, y + self.cell_size), 3)
                 # Draw left line
                 if not left or col == 0:
-                    pygame.draw.line(self.screen, BLACK, (x, y), (x, y + self.cell_size), 1)
+                    pygame.draw.line(self.screen, WHITE, (x, y), (x, y + self.cell_size), 3)
 
         # Note: the position values of the agent,goal and keys are stored in the following format [y,x]
 
         # Draw the agent
-        agent_rect = pygame.Rect(
-            self.agent_pos[1] * self.cell_size,
-            self.agent_pos[0] * self.cell_size,
-            self.cell_size,
-            self.cell_size,
-        )
-        pygame.draw.rect(self.screen, BLUE, agent_rect)
+        agent_image = self.agent_images[self.agent_direction]
+        self.screen.blit(agent_image, (self.agent_pos[1] * self.cell_size, self.agent_pos[0] * self.cell_size))
 
         # Draw the goal
-
-        goal_rect = pygame.Rect(
-            self.goal_pos[1] * self.cell_size,
-            self.goal_pos[0] * self.cell_size,
-            self.cell_size,
-            self.cell_size,
-        )
-        pygame.draw.rect(self.screen, GREEN, goal_rect)
+        self.screen.blit(self.door_image, (self.goal_pos[1]*self.cell_size, self.goal_pos[0]*self.cell_size))
 
         # Draw the agent and goal if they are both on the same cell and the keys are still not collected
         if self.agent_pos == self.goal_pos:
-            pygame.draw.rect(self.screen, RED, goal_rect)
-
+            self.screen.blit(self.red_door_image, (self.goal_pos[1]*self.cell_size, self.goal_pos[0]*self.cell_size))
+        
         # Draw the keys
-
         for key_pos in self.keys_pos:
-            key_rect = pygame.Rect(
-                key_pos[1] * self.cell_size,
-                key_pos[0] * self.cell_size,
-                self.cell_size,
-                self.cell_size,
-            )
-
-            pygame.draw.circle(
-                self.screen, YELLOW, key_rect.center, self.cell_size // 4
-            )
+            self.screen.blit(self.key_image, (key_pos[1]*self.cell_size, key_pos[0]*self.cell_size))
 
         # Draw the obstacles
 
         for obstacle_pos in self.obstacles_pos:
-            obstacle_rect = pygame.Rect(
-                obstacle_pos[1] * self.cell_size,
-                obstacle_pos[0] * self.cell_size,
-                self.cell_size,
-                self.cell_size,
-            )
-
-            pygame.draw.circle(
-                self.screen, GREY, obstacle_rect.center, self.cell_size // 4
-            )
+            self.screen.blit(self.obstacle_image, (obstacle_pos[1]*self.cell_size, obstacle_pos[0]*self.cell_size))
 
         pygame.display.flip()
-        self.clock.tick(30)
+        self.clock.tick(self.fps)
 
     def close(self):
         if self.screen is not None:
