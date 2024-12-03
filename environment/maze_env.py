@@ -262,11 +262,11 @@ class MazeEnv(gym.Env):
 
         self.agent_pos = [row,col]
 
-        # Check if the agent is in a key position and collect it ig so
+        # Check if the agent is in a key position and collect it if so
         if self.maze[row, col] == self.KEY:
             self.keys_collected += 1
             self.maze[row, col] = 0
-            self.keys_pos.remove(self.agent_pos)
+            self.keys_pos.remove([row,col])
 
         # Check if agent reached the goal and has enough keys or wheather the agent has fallen into an obstacle
         done = bool(self.agent_pos == self.goal_pos and self.keys_collected >= self.num_keys or self.agent_pos in self.obstacles_pos)
@@ -296,15 +296,17 @@ class MazeEnv(gym.Env):
     def compute_keys_distances(self):
         """
         Reset the keys distances list and recompute the distances from the agent to all keys.
+        Mark the distance between the agent and a collected key with -1.
         """
         self.keys_distances.clear()
+        self.keys_distances = [-1 for _ in range(self.num_keys)]
 
-        for key_pos in self.keys_pos:
+        for index,key_pos in enumerate(self.keys_pos):
 
             if self.distance_type == "euclidean":
-                self.keys_distances.append(euclidean_distance(self.agent_pos, key_pos))
+                self.keys_distances[index] = euclidean_distance(self.agent_pos, key_pos)
             elif self.distance_type == "manhattan":
-                self.keys_distances.append(manhattan_distance(self.agent_pos, key_pos))
+                self.keys_distances[index] = manhattan_distance(self.agent_pos, key_pos)
 
     def compute_obstacle_distances(self):
         """
