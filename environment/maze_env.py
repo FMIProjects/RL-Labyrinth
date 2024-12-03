@@ -13,7 +13,7 @@ class MazeEnv(gym.Env):
     Custom environment for an RL agent navigating a procedurally generated maze.
     """
 
-    def __init__(self, width=10, height=10, num_keys=3, cell_size=20,distance_type = "manhattan", fps=30):
+    def __init__(self, width=10, height=10, num_keys=3,cell_size=20,num_obstacles = 5,distance_type = "manhattan", fps=30):
 
         # Macros
         self.AGENT = 1
@@ -39,7 +39,7 @@ class MazeEnv(gym.Env):
         self.width = width
         self.height = height
         self.num_keys = num_keys
-        self.num_obstacles = 0
+        self.num_obstacles = num_obstacles
         self.keys_collected = 0
         self.cell_size = cell_size
         self.fps = fps
@@ -150,8 +150,7 @@ class MazeEnv(gym.Env):
 
         # Generate obstacles
         self.obstacles_pos = []
-        self.num_obstacles = (self.width * self.height) // 128
-        self.distribute_obstacles(self.num_obstacles)
+        self.distribute_obstacles()
 
         # Compute the obstacle distances
         self.compute_obstacle_distances()
@@ -175,23 +174,35 @@ class MazeEnv(gym.Env):
         self.keys_collected = 0
         return self.get_observation()
 
-    def distribute_obstacles(self,num_obstacles):
+    def distribute_obstacles(self):
 
         """
-        Distribute a number of maximum num_obstacles on the maze.
-        The higher the obstacles the better the change.
-        Iterate through 4x4 cell blocks and choose whether to place an obstacle in one of the 4.
-        If the 4x4 cell block is chosen then choose again a random 1x1 cell to place an obstacle if that cell is not occupied.
+        Distribute the obstacles in the maze.
+        Iterate through the maze grid by 4x4 cells and toss a coin to place an obstacle randomly into the chosen cell.
         """
 
-        # Get the total number of cells and calculate the probability of chosing a 4x4 cell block
-        num_cells = (self.height * self.width) // 4
-        probability = num_obstacles / num_cells
+        probability = 0.5
+        num_obstacles_to_place = self.num_obstacles
+
 
         for i in range(0,self.height,2):
+
+            if num_obstacles_to_place == 0:
+                break
+
+            is_placed = False
+
             for j in range(0,self.width,2):
 
+                if is_placed:
+                    break
+
                 coin_flip = np.random.rand()
+
+                # If the coin has not been placed till the last column, make the current cell chosen
+                if j == self.width-2:
+                    coin_flip = 0
+
                 # Continue if the current cell is not chosen
                 if coin_flip >= probability:
                     continue
@@ -207,7 +218,10 @@ class MazeEnv(gym.Env):
                 chosen_pos = positions[random_index]
                 self.obstacles_pos.append(chosen_pos)
                 self.maze[chosen_pos[0],chosen_pos[1]] = self.OBSTACLE
-                num_obstacles -= 1
+                num_obstacles_to_place -= 1
+                is_placed = True
+
+
 
 
     def random_empty_cell(self, exclude=None):

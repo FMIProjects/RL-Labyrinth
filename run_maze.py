@@ -9,7 +9,7 @@ import sys
 def main():
 
     # Create Environment
-    env = MazeEnv(width=40, height=20,cell_size=30, num_keys=6,distance_type="manhattan",fps=30)
+    env = MazeEnv(width=6, height=6,cell_size=30, num_keys=3,num_obstacles=2,distance_type="manhattan",fps=30)
     obs = env.reset()
 
     done = False
