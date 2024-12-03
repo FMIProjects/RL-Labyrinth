@@ -9,7 +9,7 @@ import sys
 def main():
 
     # Create Environment
-    env = MazeEnv(width=6, height=6,cell_size=30, num_keys=3,num_obstacles=2,distance_type="manhattan",fps=30)
+    env = MazeEnv(width=6, height=6,cell_size=30, num_keys=3,num_obstacles=0,peek_distance=2,distance_type="manhattan",fps=30)
     obs = env.reset()
 
     done = False
@@ -27,8 +27,10 @@ def main():
         print(f"Action: {action}")
 
         obs, reward, done, _ = env.step(action)
-        _,goal_distance,keys_distances,obstacle_distances = env.get_observation()
+        agent_pos,agent_view,goal_distance,keys_distances,obstacle_distances = obs
 
+        print(f"Agent pos: {agent_pos}")
+        print(f"Agent view:\n {agent_view}")
         print(f"Goal distance: {goal_distance}")
         print(f"Keys distances: {keys_distances}")
         print(f"Obstacle distances: {obstacle_distances}")

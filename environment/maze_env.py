@@ -13,7 +13,7 @@ class MazeEnv(gym.Env):
     Custom environment for an RL agent navigating a procedurally generated maze.
     """
 
-    def __init__(self, width=10, height=10, num_keys=3,cell_size=20,num_obstacles = 5,distance_type = "manhattan", fps=30):
+    def __init__(self, width=10, height=10, num_keys=3, cell_size=20, num_obstacles = 5, peek_distance = 1, distance_type ="manhattan", fps=30):
 
         # Macros
         self.AGENT = 1
@@ -32,7 +32,7 @@ class MazeEnv(gym.Env):
         assert num_keys <= width * height, "Too many keys for current maze configuration."
         assert width > 0 and height > 0 and num_keys >= 0 and cell_size > 0, "Parameters values must be positive"
         assert distance_type == "euclidean" or distance_type == "manhattan", "Distance type must be either 'euclidian' or 'manhattan'"
-
+        assert (2 * peek_distance + 1) <= width or (2 * peek_distance + 1) <= height, "Peeking distance too large"
         super(MazeEnv, self).__init__()
 
         # Maze configuration
@@ -43,6 +43,7 @@ class MazeEnv(gym.Env):
         self.keys_collected = 0
         self.cell_size = cell_size
         self.fps = fps
+        self.peek_distance = peek_distance
 
         # Neighbour cells used for drawing the lines in the maze UP,RIGHT,DOWN,LEFT
         self.cell_neighbours = maze_scale_up(generate_maze(self.height // 2, self.width // 2))
@@ -69,6 +70,9 @@ class MazeEnv(gym.Env):
 
         # Initial obstacle positions
         self.obstacles_pos = None
+
+        # Agent view (peek_maze)
+        self.peek_maze = np.full((2*peek_distance+1,2*peek_distance+1), -1)
 
         # Distances from goals and obstacles
 
@@ -172,6 +176,10 @@ class MazeEnv(gym.Env):
             self.maze[key_pos[0], key_pos[1]] = self.KEY
 
         self.keys_collected = 0
+
+        # Reset peek maze
+        self.peek_maze = np.full((2 * self.peek_distance + 1, 2 * self.peek_distance + 1), -1)
+
         return self.get_observation()
 
     def distribute_obstacles(self):
@@ -242,11 +250,16 @@ class MazeEnv(gym.Env):
         Apply action to move the agent in the maze.
         """
 
-        row,col = self.agent_pos
-        neighbours = self.cell_neighbours[row,col]
+        old_row,old_col = self.agent_pos
+        neighbours = self.cell_neighbours[old_row,old_col]
 
         self.agent_direction = action
+
+        # Update the old position
+        self.maze[old_row, old_col] = 0 if self.maze[old_row, old_col] == self.AGENT else self.GOAL
+
         # Check if the agent can go in chosen direction and update its position if possible
+        row,col = old_row,old_col
 
         if action == self.UP and neighbours[self.UP] == 1:
             row -= 1
@@ -259,6 +272,7 @@ class MazeEnv(gym.Env):
 
         elif action == self.LEFT and neighbours[self.LEFT] == 1:
             col -= 1
+
 
         self.agent_pos = [row,col]
 
@@ -281,6 +295,9 @@ class MazeEnv(gym.Env):
         self.compute_goal_distance()
         self.compute_obstacle_distances()
         self.compute_keys_distances()
+
+        #Compute peek maze
+        self.compute_peek_maze()
 
         return self.get_observation(), reward, done, {}
 
@@ -321,12 +338,27 @@ class MazeEnv(gym.Env):
             elif self.distance_type == "manhattan":
                 self.obstacles_distances.append(manhattan_distance(self.agent_pos, obstacle_pos))
 
+    def compute_peek_maze(self):
+        row,col = self.agent_pos
+
+        offset_row = row-self.peek_distance
+        offset_col = col-self.peek_distance
+
+        for i in range(row-self.peek_distance, row + self.peek_distance + 1):
+            for j in range(col-self.peek_distance, col + self.peek_distance + 1):
+
+                if 0 <= i < self.height and 0<= j < self.width:
+                    self.peek_maze[i-offset_row,j-offset_col] = self.maze[i,j]
+                else:
+                    self.peek_maze[i - offset_row, j - offset_col] = -1
+
+
     def get_observation(self):
         """
         Return the current state of the maze with the maze configuration, goal distance, keys distances and obstacle distances.
         """
 
-        return self.maze,self.goal_distance,self.keys_distances,self.obstacles_distances
+        return self.agent_pos,self.peek_maze,self.goal_distance,self.keys_distances,self.obstacles_distances
 
     def render(self, mode="human"):
         """
