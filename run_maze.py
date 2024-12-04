@@ -22,7 +22,7 @@ def main():
                 sys.exit()
 
         # Sample a random action
-        action = env.action_space.sample()
+        action = env.sample_action()
 
         print(f"Action: {action}")
 

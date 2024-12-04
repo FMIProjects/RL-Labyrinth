@@ -134,6 +134,21 @@ class MazeEnv(gym.Env):
                 self.background_images.append(random_image)
                 self.screen.blit(random_image, (x, y))
 
+    def sample_action(self):
+
+        """
+        Method used to get a valid random action based on the current agent position.
+        """
+
+        random_action = self.action_space.sample()
+        current_moves = self.cell_neighbours[self.agent_pos[0],self.agent_pos[1]]
+
+        while current_moves[random_action] != 1:
+            random_action = self.action_space.sample()
+
+        return random_action
+
+
     def reset(self):
         """
         Reset the environment to its initial state and return the initial observation.
@@ -250,6 +265,8 @@ class MazeEnv(gym.Env):
         Apply action to move the agent in the maze.
         """
 
+        reward = 0
+
         old_row,old_col = self.agent_pos
         neighbours = self.cell_neighbours[old_row,old_col]
 
@@ -281,6 +298,7 @@ class MazeEnv(gym.Env):
             self.keys_collected += 1
             self.maze[row, col] = 0
             self.keys_pos.remove([row,col])
+            reward += 5
 
         # Check if agent reached the goal and has enough keys or wheather the agent has fallen into an obstacle
         done = bool(self.agent_pos == self.goal_pos and self.keys_collected >= self.num_keys or self.agent_pos in self.obstacles_pos)
@@ -289,7 +307,7 @@ class MazeEnv(gym.Env):
         self.maze[row, col] = self.AGENT_AND_GOAL if row == self.agent_pos == self.goal_pos else self.AGENT
 
         # Calculate reward
-        reward = -0.5 if done and self.agent_pos in self.obstacles_pos else 1 if done else 0  # Penalty for each move, reward for completion
+        reward += -1.0 if done and self.agent_pos in self.obstacles_pos else 10.0 if done else -0.01  # Penalty for each move, reward for completion
 
         # Recompute distances
         self.compute_goal_distance()
@@ -352,13 +370,38 @@ class MazeEnv(gym.Env):
                 else:
                     self.peek_maze[i - offset_row, j - offset_col] = -1
 
-
     def get_observation(self):
         """
         Return the current state of the maze with the maze configuration, goal distance, keys distances and obstacle distances.
         """
+        return (
+            tuple(self.agent_pos),
+            tuple(self.peek_maze.flatten()),
+            self.get_nearest_key()
+        )
 
-        return self.agent_pos,self.peek_maze,self.goal_distance,self.keys_distances,self.obstacles_distances
+
+    def get_nearest_key(self):
+        """
+        Return the nearest key distance to the agent.
+        """
+        if len(self.keys_distances) == 0:
+            return -1
+
+        else:
+            self.keys_distances.sort()
+            return self.keys_distances[0]
+
+    def get_nearest_obstacle(self):
+        """
+        Return the nearest obstacle distance to the agent.
+        """
+        if len(self.obstacles_distances) == 0:
+            return -1
+
+        else:
+            self.obstacles_distances.sort()
+            return self.obstacles_distances[0]
 
     def render(self, mode="human"):
         """
