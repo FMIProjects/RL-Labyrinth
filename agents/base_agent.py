@@ -8,15 +8,15 @@ class BaseAgent:
     """
     Abstract base class for reinforcement learning agents.
     """
-    def __init__(self,env: MazeEnv):
+
+    def __init__(self, env: MazeEnv):
         self.env = env
 
-    def choose_action(self,state):
+    def choose_action(self, state):
         raise NotImplementedError("BaseAgent class method choose_action() is abstract.")
 
-    def train(self,episodes=10000):
+    def train(self, episodes=10000):
         raise NotImplementedError("BaseAgent class method train() is abstract.")
-
 
 
 def test_agent(env: MazeEnv, agent: BaseAgent, episodes=10):
@@ -42,7 +42,6 @@ def test_agent(env: MazeEnv, agent: BaseAgent, episodes=10):
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
-
 
             action = agent.choose_action(state)
             print(f"Choose action: {action}")
