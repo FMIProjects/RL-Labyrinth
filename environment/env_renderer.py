@@ -68,11 +68,12 @@ class EnvRenderer:
                 self.screen.blit(random_image, (x, y))
 
     def step(self, action):
+        """
+        Method needed in order to update the agent direction.
+        """
         self.agent_direction = action
         return self.maze_env.step(action)
 
-    def render(self):
-        self.maze_env.render()
 
     def render(self, mode="human"):
         """
