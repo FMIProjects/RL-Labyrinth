@@ -13,7 +13,7 @@ class MazeEnv(gym.Env):
     Custom environment for an RL agent navigating a procedurally generated maze.
     """
 
-    def __init__(self, width=10, height=10, num_keys=3, cell_size=20, num_obstacles = 5, peek_distance = 1, distance_type ="manhattan", fps=30):
+    def __init__(self, width=10, height=10, num_keys=3, cell_size=20, num_obstacles = 5, peek_distance = 1, distance_type = "manhattan", new_layout_on_reset = True, fps=30):
 
         # Macros
         self.AGENT = 1
@@ -41,9 +41,8 @@ class MazeEnv(gym.Env):
         self.num_keys = num_keys
         self.num_obstacles = num_obstacles
         self.keys_collected = 0
-        self.cell_size = cell_size
-        self.fps = fps
         self.peek_distance = peek_distance
+        self.new_layout_on_reset = new_layout_on_reset
 
         # Neighbour cells used for drawing the lines in the maze UP,RIGHT,DOWN,LEFT
         self.cell_neighbours = maze_scale_up(generate_maze(self.height // 2, self.width // 2))
@@ -82,57 +81,7 @@ class MazeEnv(gym.Env):
         self.keys_distances = []
         self.obstacles_distances = []
 
-        # Pygame Setup
-        self.screen = None
-        self.clock = pygame.time.Clock()
 
-        if self.screen is None:
-            pygame.init()
-            self.screen = pygame.display.set_mode(
-                (self.width * self.cell_size, self.height * self.cell_size)
-            )
-            pygame.display.set_caption("Maze Environment")
-
-        # Assets loading
-
-        self.agent_images = {
-        self.UP: pygame.transform.scale(pygame.image.load("assets/agent_up.png").convert_alpha(), (self.cell_size, self.cell_size)),
-        self.RIGHT: pygame.transform.scale(pygame.image.load("assets/agent_right.png").convert_alpha(), (self.cell_size, self.cell_size)),
-        self.DOWN: pygame.transform.scale(pygame.image.load("assets/agent_down.png").convert_alpha(), (self.cell_size, self.cell_size)),
-        self.LEFT: pygame.transform.scale(pygame.image.load("assets/agent_left.png").convert_alpha(), (self.cell_size, self.cell_size))
-        }
-
-        self.agent_direction = self.UP
-        self.background_images = []
-
-        self.ground_images = [
-            pygame.image.load(f"assets/ground{i}.png").convert()
-            for i in range(1, 12)            
-            ]
-
-        self.key_image = pygame.image.load(f"assets/key.png").convert_alpha()
-        self.door_image = pygame.image.load(f"assets/door.png").convert_alpha()
-        self.red_door_image = pygame.image.load(f"assets/red_door.png").convert_alpha()
-        self.obstacle_image = pygame.image.load(f"assets/obstacle.png").convert_alpha()
-
-        # Scale images to cell size
-        self.ground_images = [
-                pygame.transform.scale(img, (self.cell_size, self.cell_size))
-                for img in self.ground_images
-            ]
-
-        self.key_image = pygame.transform.scale(self.key_image, (self.cell_size, self.cell_size))
-        self.door_image = pygame.transform.scale(self.door_image, (self.cell_size, self.cell_size))
-        self.red_door_image = pygame.transform.scale(self.red_door_image, (self.cell_size, self.cell_size))
-        self.obstacle_image = pygame.transform.scale(self.obstacle_image, (self.cell_size, self.cell_size))
-
-        # Fill background with random images
-        for row in range(self.height):
-            for col in range(self.width):
-                x, y = col * self.cell_size, row * self.cell_size
-                random_image = random.choice(self.ground_images)
-                self.background_images.append(random_image)
-                self.screen.blit(random_image, (x, y))
 
     def sample_action(self):
 
@@ -154,8 +103,10 @@ class MazeEnv(gym.Env):
         Reset the environment to its initial state and return the initial observation.
         Randomize start and finish positions.
         """
+
         # Generate a new scaled up maze layout
-        self.cell_neighbours = maze_scale_up(generate_maze(self.height // 2, self.width // 2))
+        if self.new_layout_on_reset:
+            self.cell_neighbours = maze_scale_up(generate_maze(self.height // 2, self.width // 2))
         self.maze = np.zeros((self.height, self.width))
 
         # Randomize start position (agent position)
@@ -270,8 +221,6 @@ class MazeEnv(gym.Env):
         old_row,old_col = self.agent_pos
         neighbours = self.cell_neighbours[old_row,old_col]
 
-        self.agent_direction = action
-
         # Update the old position
         self.maze[old_row, old_col] = 0 if self.maze[old_row, old_col] == self.AGENT else self.GOAL
 
@@ -377,7 +326,8 @@ class MazeEnv(gym.Env):
         return (
             tuple(self.agent_pos),
             tuple(self.peek_maze.flatten()),
-            self.get_nearest_key()
+            tuple(self.get_current_walls()),
+            self.get_nearest_key(),
         )
 
 
@@ -403,74 +353,6 @@ class MazeEnv(gym.Env):
             self.obstacles_distances.sort()
             return self.obstacles_distances[0]
 
-    def render(self, mode="human"):
-        """
-        Render the maze visually using Pygame.
-        """
+    def get_current_walls(self):
+        return self.cell_neighbours[self.agent_pos[0],self.agent_pos[1]]
 
-        WHITE = (255, 255, 255)
-        BLACK = (0,0,0)
-        BLUE = (0, 0, 255)
-        GREEN = (0, 255, 0)
-        YELLOW = (255, 215, 0)
-        RED = (255, 0, 0)
-        GREY = (128,128,128)
-        
-        # Draw background
-        i = 0
-        for row in range(self.height):
-            for col in range(self.width):
-                x, y = col * self.cell_size, row * self.cell_size
-                self.screen.blit(self.background_images[i], (x, y))
-                i+=1
-        
-        # Draw lines
-        for row in range(self.height):
-            for col in range(self.width):
-                x, y = col * self.cell_size, row * self.cell_size
-
-                # Get the bool values to check where to draw the walls
-                up, right, down, left = self.cell_neighbours[row, col]
-
-                # Draw up line
-                if not up or row == 0:
-                    pygame.draw.line(self.screen, WHITE, (x, y), (x + self.cell_size, y), 3)
-                # Draw right line
-                if not right or col == self.width - 1:
-                    pygame.draw.line(self.screen, WHITE, (x + self.cell_size, y), (x + self.cell_size, y + self.cell_size), 3)
-                # Draw down line
-                if not down or row == self.height - 1:
-                    pygame.draw.line(self.screen, WHITE, (x, y + self.cell_size), (x + self.cell_size, y + self.cell_size), 3)
-                # Draw left line
-                if not left or col == 0:
-                    pygame.draw.line(self.screen, WHITE, (x, y), (x, y + self.cell_size), 3)
-
-        # Note: the position values of the agent,goal and keys are stored in the following format [y,x]
-
-        # Draw the agent
-        agent_image = self.agent_images[self.agent_direction]
-        self.screen.blit(agent_image, (self.agent_pos[1] * self.cell_size, self.agent_pos[0] * self.cell_size))
-
-        # Draw the goal
-        self.screen.blit(self.door_image, (self.goal_pos[1]*self.cell_size, self.goal_pos[0]*self.cell_size))
-
-        # Draw the agent and goal if they are both on the same cell and the keys are still not collected
-        if self.agent_pos == self.goal_pos:
-            self.screen.blit(self.red_door_image, (self.goal_pos[1]*self.cell_size, self.goal_pos[0]*self.cell_size))
-        
-        # Draw the keys
-        for key_pos in self.keys_pos:
-            self.screen.blit(self.key_image, (key_pos[1]*self.cell_size, key_pos[0]*self.cell_size))
-
-        # Draw the obstacles
-
-        for obstacle_pos in self.obstacles_pos:
-            self.screen.blit(self.obstacle_image, (obstacle_pos[1]*self.cell_size, obstacle_pos[0]*self.cell_size))
-
-        pygame.display.flip()
-        self.clock.tick(self.fps)
-
-    def close(self):
-        if self.screen is not None:
-            pygame.quit()
-            self.screen = None

@@ -2,6 +2,7 @@
 import time
 
 from environment.maze_env import MazeEnv
+from environment.env_renderer import EnvRenderer
 import pygame
 import sys
 
@@ -9,12 +10,14 @@ import sys
 def main():
 
     # Create Environment
-    env = MazeEnv(width=6, height=6,cell_size=30, num_keys=3,num_obstacles=0,peek_distance=2,distance_type="manhattan",fps=30)
+    env = MazeEnv(width=20, height=20, num_keys=3,num_obstacles=0,peek_distance=2,distance_type="manhattan")
     obs = env.reset()
+
+    env_renderer = EnvRenderer(maze_env=env,cell_size=30,fps=30)
 
     done = False
     while not done:
-        env.render()
+        env_renderer.render()
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -26,15 +29,15 @@ def main():
 
         print(f"Action: {action}")
 
-        obs, reward, done, _ = env.step(action)
-        agent_pos,agent_view,goal_distance,keys_distances,obstacle_distances = obs
-
-        print(f"Agent pos: {agent_pos}")
-        print(f"Agent view:\n {agent_view}")
-        print(f"Goal distance: {goal_distance}")
-        print(f"Keys distances: {keys_distances}")
-        print(f"Obstacle distances: {obstacle_distances}")
-        print(f"Reward: {reward}, Done: {done}")
+        obs, reward, done, _ = env_renderer.step(action)
+        # agent_pos,agent_view,goal_distance,keys_distances,obstacle_distances = obs
+        #
+        # print(f"Agent pos: {agent_pos}")
+        # print(f"Agent view:\n {agent_view}")
+        # print(f"Goal distance: {goal_distance}")
+        # print(f"Keys distances: {keys_distances}")
+        # print(f"Obstacle distances: {obstacle_distances}")
+        # print(f"Reward: {reward}, Done: {done}")
 
     env.close()
 
