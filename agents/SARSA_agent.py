@@ -6,20 +6,23 @@ import os
 
 import pickle
 
+
 class SarsaAgent(BaseAgent):
     """
     General SARSA Agent for MazeEnv using ε-greedy strategy to choose an action.
     """
 
     def __init__(
-        self,
-        env: MazeEnv,
-        alpha=0.1,
-        gamma=0.99,
-        epsilon=1.0,
-        epsilon_decay=0.995,
-        epsilon_min=0.1,
-        pickled_q_table_path=None,
+            self,
+            env: MazeEnv,
+            alpha=0.1,
+            gamma=0.99,
+            epsilon=1.0,
+            epsilon_decay=0.995,
+            epsilon_min=0.1,
+            pickled_q_table_path=None,
+            episodes_trained=0,
+            save_agent=True
     ):
         super().__init__(env)
         self.alpha = alpha  # Learning rate
@@ -31,6 +34,17 @@ class SarsaAgent(BaseAgent):
         self.epsilon_min = epsilon_min  # Minimum probability to explore a new path
         self.q_table = {}  # Q(s, a)
         self.pickled_q_table_path = pickled_q_table_path
+        self.episodes_trained = episodes_trained
+        self.save_agent = save_agent
+
+    def copy(self, path_to_pickled_sarsa_agent):
+        if os.path.exists(path_to_pickled_sarsa_agent):
+            with open(path_to_pickled_sarsa_agent, "rb") as f:
+                object = pickle.load(f)
+                if isinstance(object, type(self)):
+                    self.__dict__.update(object.__dict__)
+        else:
+            print(path_to_pickled_sarsa_agent, " doesn t exist")
 
     def choose_action(self, state):
         """
@@ -60,7 +74,7 @@ class SarsaAgent(BaseAgent):
         temporal_difference_value = reward + self.gamma * next_q
         temporal_difference_error = temporal_difference_value - current_q
         self.q_table[(state, action)] = (
-            current_q + self.alpha * temporal_difference_error
+                current_q + self.alpha * temporal_difference_error
         )
 
     def train(self, episodes=10000):
@@ -70,6 +84,7 @@ class SarsaAgent(BaseAgent):
         """
 
         for episode in tqdm(range(episodes)):
+            self.episodes_trained += 1
             self.env.reset()
 
             # G et the current state and choose an action
@@ -80,7 +95,6 @@ class SarsaAgent(BaseAgent):
             done = False
 
             while not done:
-
                 # Get the next state reward and choose the next action
                 next_state, reward, done, _ = self.env.step(current_action)
                 next_action = self.choose_action(next_state)
@@ -104,5 +118,9 @@ class SarsaAgent(BaseAgent):
             os.makedirs(parent_dir, exist_ok=True)
             with open(self.pickled_q_table_path, "wb") as f:
                 pickle.dump(self.q_table, f)
-
+        if self.save_agent:
+            parent_dir = os.path.dirname("./agent_rack/sarsa_agent.pkl")
+            os.makedirs(parent_dir, exist_ok=True)
+            with open("./agent_rack/sarsa_agent.pkl", "wb") as f:
+                pickle.dump(self, f)
         print("Training finished!")
