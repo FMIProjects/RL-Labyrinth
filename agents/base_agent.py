@@ -56,7 +56,7 @@ def test_agent(env: MazeEnv, agent: BaseAgent, episodes=10):
 
     maze_renderer = EnvRenderer(env)
 
-    agent.epsilon = 0
+    agent.epsilon = 0.0
     for episode in range(episodes):
 
         env.reset()
@@ -77,5 +77,3 @@ def test_agent(env: MazeEnv, agent: BaseAgent, episodes=10):
             state, reward, done, _ = maze_renderer.step(action)
             state = env.get_observation()
             total_reward += reward
-
-
