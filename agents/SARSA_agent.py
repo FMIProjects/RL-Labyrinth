@@ -14,17 +14,17 @@ class SarsaAgent(BaseAgent):
 
     def __init__(
             self,
-            env: MazeEnv,
+            env: MazeEnv | None = None,
             alpha=0.1,
             gamma=0.99,
             epsilon=1.0,
             epsilon_decay=0.995,
             epsilon_min=0.1,
-            pickled_q_table_path=None,
+            load_pickle_path=None,
+            store_pickle_path=None,
             episodes_trained=0,
-            save_agent=True
     ):
-        super().__init__(env)
+        super().__init__(env,store_pickle_path=store_pickle_path,load_pickle_path=load_pickle_path)
         self.alpha = alpha  # Learning rate
         self.gamma = gamma  # Discount factor
         self.epsilon = epsilon  # Probability to explore a new path
@@ -33,18 +33,7 @@ class SarsaAgent(BaseAgent):
         )
         self.epsilon_min = epsilon_min  # Minimum probability to explore a new path
         self.q_table = {}  # Q(s, a)
-        self.pickled_q_table_path = pickled_q_table_path
         self.episodes_trained = episodes_trained
-        self.save_agent = save_agent
-
-    def copy(self, path_to_pickled_sarsa_agent):
-        if os.path.exists(path_to_pickled_sarsa_agent):
-            with open(path_to_pickled_sarsa_agent, "rb") as f:
-                object = pickle.load(f)
-                if isinstance(object, type(self)):
-                    self.__dict__.update(object.__dict__)
-        else:
-            print(path_to_pickled_sarsa_agent, " doesn t exist")
 
     def choose_action(self, state):
         """
@@ -112,15 +101,4 @@ class SarsaAgent(BaseAgent):
             # After each episode reduce the exploration rate
             self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
 
-        # Store the q_table as a pkl file if requested and create non-existing directories
-        if self.pickled_q_table_path is not None:
-            parent_dir = os.path.dirname(self.pickled_q_table_path)
-            os.makedirs(parent_dir, exist_ok=True)
-            with open(self.pickled_q_table_path, "wb") as f:
-                pickle.dump(self.q_table, f)
-        if self.save_agent:
-            parent_dir = os.path.dirname("./agent_rack/sarsa_agent.pkl")
-            os.makedirs(parent_dir, exist_ok=True)
-            with open("./agent_rack/sarsa_agent.pkl", "wb") as f:
-                pickle.dump(self, f)
         print("Training finished!")
