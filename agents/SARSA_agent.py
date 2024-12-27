@@ -2,10 +2,6 @@ import numpy as np
 from tqdm import tqdm
 from environment.maze_env import MazeEnv
 from agents.base_agent import BaseAgent
-import os
-
-import pickle
-
 
 class SarsaAgent(BaseAgent):
     """
