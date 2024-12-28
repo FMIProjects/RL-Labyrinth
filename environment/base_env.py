@@ -366,14 +366,15 @@ class BaseMazeEnv(gym.Env):
 
     def get_nearest_key(self):
         """
-        Return the nearest key distance to the agent.
+        Return a tuple of the nearest key in the maze and its position.
         """
-        if len(self.keys_distances) == 0:
-            return -1
+        if len(self.keys_pos) == 0:
+            return -1,(-1,-1)
 
-        else:
-            self.keys_distances.sort()
-            return self.keys_distances[0]
+        key_data = list(zip(self.keys_distances, self.keys_pos))
+        key_data = sorted(key_data, key=lambda x: x[0])
+
+        return key_data[0][0], tuple(key_data[0][1])
 
     def get_nearest_obstacle(self):
         """
