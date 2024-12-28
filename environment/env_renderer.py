@@ -1,11 +1,12 @@
 import pygame
 import random
+import os
 
 from environment.base_env import BaseMazeEnv
 
 
 class EnvRenderer:
-    def __init__(self, maze_env: BaseMazeEnv, cell_size=20, fps=60):
+    def __init__(self, maze_env: BaseMazeEnv, cell_size=20, fps=60,assets_dir_path = "./assets"):
         self.maze_env = maze_env
         self.cell_size = cell_size
         self.fps = fps
@@ -24,23 +25,38 @@ class EnvRenderer:
             )
             pygame.display.set_caption("Maze Environment")
 
+        #PATHS
+
+        AGENT_UP_PATH = os.path.join(assets_dir_path, "agent_up.png")
+        AGENT_DOWN_PATH = os.path.join(assets_dir_path, "agent_down.png")
+        AGENT_LEFT_PATH = os.path.join(assets_dir_path, "agent_left.png")
+        AGENT_RIGHT_PATH = os.path.join(assets_dir_path, "agent_right.png")
+
+        GROUND_IMAGES_PATHS = [os.path.join(assets_dir_path, f"ground{i}.png") for i in range(1,12)]
+
+        KEY_PATH = os.path.join(assets_dir_path, "key.png")
+        DOOR_PATH = os.path.join(assets_dir_path, "door.png")
+        RED_DOOR_PATH = os.path.join(assets_dir_path, "red_door.png")
+        OBSTACLE_PATH = os.path.join(assets_dir_path, "obstacle.png")
+
         # Assets loading
 
         self.agent_images = {
             self.maze_env.UP: pygame.transform.scale(
-                pygame.image.load("assets/agent_up.png").convert_alpha(),
+
+                pygame.image.load(AGENT_UP_PATH).convert_alpha(),
                 (self.cell_size, self.cell_size),
             ),
             self.maze_env.RIGHT: pygame.transform.scale(
-                pygame.image.load("assets/agent_right.png").convert_alpha(),
+                pygame.image.load(AGENT_RIGHT_PATH).convert_alpha(),
                 (self.cell_size, self.cell_size),
             ),
             self.maze_env.DOWN: pygame.transform.scale(
-                pygame.image.load("assets/agent_down.png").convert_alpha(),
+                pygame.image.load(AGENT_DOWN_PATH).convert_alpha(),
                 (self.cell_size, self.cell_size),
             ),
             self.maze_env.LEFT: pygame.transform.scale(
-                pygame.image.load("assets/agent_left.png").convert_alpha(),
+                pygame.image.load(AGENT_LEFT_PATH).convert_alpha(),
                 (self.cell_size, self.cell_size),
             ),
         }
@@ -49,13 +65,13 @@ class EnvRenderer:
         self.background_images = []
 
         self.ground_images = [
-            pygame.image.load(f"assets/ground{i}.png").convert() for i in range(1, 12)
+            pygame.image.load(ground_path).convert() for ground_path in GROUND_IMAGES_PATHS
         ]
 
-        self.key_image = pygame.image.load(f"assets/key.png").convert_alpha()
-        self.door_image = pygame.image.load(f"assets/door.png").convert_alpha()
-        self.red_door_image = pygame.image.load(f"assets/red_door.png").convert_alpha()
-        self.obstacle_image = pygame.image.load(f"assets/obstacle.png").convert_alpha()
+        self.key_image = pygame.image.load(KEY_PATH).convert_alpha()
+        self.door_image = pygame.image.load(DOOR_PATH).convert_alpha()
+        self.red_door_image = pygame.image.load(RED_DOOR_PATH).convert_alpha()
+        self.obstacle_image = pygame.image.load(OBSTACLE_PATH).convert_alpha()
 
         # Scale images to cell size
         self.ground_images = [

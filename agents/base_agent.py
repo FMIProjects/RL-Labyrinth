@@ -48,13 +48,13 @@ class BaseAgent:
             agent = pickle.load(file)
             self.__dict__.update(agent.__dict__)
 
-def test_agent(env: BaseMazeEnv, agent: BaseAgent, episodes=10):
+def test_agent(env: BaseMazeEnv, agent: BaseAgent, episodes=10,verbose = False,renderer_assets_dir_path = "./assets"):
     """
     Run a test agent for a given number of episodes.
     Render each step in the maze.
     """
 
-    maze_renderer = EnvRenderer(env)
+    maze_renderer = EnvRenderer(env,assets_dir_path=renderer_assets_dir_path)
 
     agent.epsilon = 0.0
     for episode in range(episodes):
@@ -73,7 +73,9 @@ def test_agent(env: BaseMazeEnv, agent: BaseAgent, episodes=10):
                     pygame.quit()
 
             action = agent.choose_action(state)
-            print(f"Choose action: {action}")
+
+            if verbose:
+                print(f"Choose action: {action}")
             state, reward, done, _ = maze_renderer.step(action)
             state = env.get_observation()
             total_reward += reward
