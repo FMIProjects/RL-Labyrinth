@@ -1,10 +1,11 @@
 import pygame
 import random
 
-from environment.maze_env import MazeEnv
+from environment.base_env import BaseMazeEnv
+
 
 class EnvRenderer:
-    def __init__(self, maze_env: MazeEnv, cell_size=20, fps=60):
+    def __init__(self, maze_env: BaseMazeEnv, cell_size=20, fps=60):
         self.maze_env = maze_env
         self.cell_size = cell_size
         self.fps = fps

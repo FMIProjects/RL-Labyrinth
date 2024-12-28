@@ -1,7 +1,7 @@
 # run_maze.py
 import time
 
-from environment.maze_env import MazeEnv
+from environment.base_env import MazeEnv
 from environment.env_renderer import EnvRenderer
 import pygame
 import sys

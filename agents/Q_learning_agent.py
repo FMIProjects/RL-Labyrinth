@@ -1,6 +1,6 @@
 import numpy as np
 from tqdm import tqdm
-from environment.maze_env import MazeEnv
+from environment.base_env import BaseMazeEnv
 from agents.base_agent import BaseAgent
 
 class QLearningAgent(BaseAgent):
@@ -10,7 +10,7 @@ class QLearningAgent(BaseAgent):
 
     def __init__(
             self,
-            env: MazeEnv | None = None,
+            env: BaseMazeEnv | None = None,
             alpha=0.1,
             gamma=0.99,
             epsilon=1.0,

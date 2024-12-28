@@ -1,7 +1,7 @@
 import pygame
 
 from environment.env_renderer import EnvRenderer
-from environment.maze_env import MazeEnv
+from environment.base_env import BaseMazeEnv
 import pickle
 import os
 
@@ -10,7 +10,7 @@ class BaseAgent:
     Abstract base class for reinforcement learning agents.
     """
 
-    def __init__(self, env: MazeEnv | None ,store_pickle_path: str = None, load_pickle_path: str = None):
+    def __init__(self, env: BaseMazeEnv | None ,store_pickle_path: str = None, load_pickle_path: str = None):
         self.env = env
         self.store_pickle_path = store_pickle_path
         self.load_pickle_path = load_pickle_path
@@ -48,7 +48,7 @@ class BaseAgent:
             agent = pickle.load(file)
             self.__dict__.update(agent.__dict__)
 
-def test_agent(env: MazeEnv, agent: BaseAgent, episodes=10):
+def test_agent(env: BaseMazeEnv, agent: BaseAgent, episodes=10):
     """
     Run a test agent for a given number of episodes.
     Render each step in the maze.

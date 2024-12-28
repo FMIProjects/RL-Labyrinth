@@ -1,12 +1,10 @@
-from pickletools import uint8
-
 import gym
 from gym import spaces
 import numpy as np
 from .procedural_generator import generate_maze, maze_scale_up
 from .distances import euclidean_distance, manhattan_distance
 
-class MazeEnv(gym.Env):
+class BaseMazeEnv(gym.Env):
     """
     Custom environment for an RL agent navigating a procedurally generated maze.
     """
@@ -53,7 +51,7 @@ class MazeEnv(gym.Env):
             2 * peek_distance + 1
         ) <= height, "Peeking distance too large"
 
-        super(MazeEnv, self).__init__()
+        super(BaseMazeEnv, self).__init__()
 
         # Maze configuration
         self.width = width
@@ -362,14 +360,9 @@ class MazeEnv(gym.Env):
 
     def get_observation(self):
         """
-        Return the current state of the maze with the maze configuration, goal distance, keys distances and obstacle distances.
+        Return the current state of the maze.
         """
-        return (
-            tuple(self.agent_pos),
-            tuple(self.peek_maze.flatten()),
-            tuple(self.get_current_walls()),
-            self.get_nearest_key(),
-        )
+        return NotImplementedError("BaseMazeEnv class method get_observation() is abstract.")
 
     def get_nearest_key(self):
         """
