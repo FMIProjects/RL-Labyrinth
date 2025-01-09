@@ -2,6 +2,7 @@ import numpy as np
 from tqdm import tqdm
 from environment.base_env import BaseMazeEnv
 from agents.base_agent import BaseAgent
+from visualiser import plot_rewards_and_lengths
 
 class SarsaAgent(BaseAgent):
     """
@@ -67,16 +68,20 @@ class SarsaAgent(BaseAgent):
         Trains the agent in a number of episodes.
         In the end stores a .pkl file of the Q(s,a) values if requested.
         """
-
+        rewards = []  # List to store rewards from each episode
+        episode_lengths = []  # List to store the number of steps per episode
+        
+        # Loop through each episode
         for episode in tqdm(range(episodes)):
             self.episodes_trained += 1
             self.env.reset()
 
-            # G et the current state and choose an action
+            # Get the current state and choose an action
             current_state = self.env.get_observation()
             current_action = self.choose_action(current_state)
 
             total_reward = 0
+            steps_taken = 0
             done = False
 
             while not done:
@@ -89,12 +94,20 @@ class SarsaAgent(BaseAgent):
                     current_state, current_action, reward, next_state, next_action
                 )
 
-                # Update the current state, current action and reward
+                # Update state and action for next step
                 current_state = next_state
                 current_action = next_action
                 total_reward += reward
+                steps_taken += 1  # Track the number of steps
 
             # After each episode reduce the exploration rate
             self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
+            
+            # Append the total reward and episode length to the lists
+            rewards.append(total_reward)
+            episode_lengths.append(steps_taken)
+
+        # Plot rewards and episode lengths after all episodes are done
+        plot_rewards_and_lengths(rewards, episode_lengths, episodes)
 
         print("Training finished!")

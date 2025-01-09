@@ -2,6 +2,7 @@ import numpy as np
 from tqdm import tqdm
 from environment.base_env import BaseMazeEnv
 from agents.base_agent import BaseAgent
+from visualiser import plot_rewards_and_lengths
 
 class QLearningAgent(BaseAgent):
     """
@@ -48,22 +49,23 @@ class QLearningAgent(BaseAgent):
             key=lambda a: self.q_table.get((state, a), 0),
         )
 
-    def update_q_value(self, state, action, reward):
+    def update_q_value(self, current_state,next_state, action, reward):
         """
         Update a Q-value entry using Q Learning formula.
         Q(s,a) = Q(s,a) + α * (reward + γ * max a ( Q(s',a) ) - Q(s,a))
         """
 
-        current_q = self.q_table.get((state, action), 0)
+        current_q = self.q_table.get((current_state, action), 0)
 
         max_q = max(
             range(self.env.action_space.n),
-            key=lambda a: self.q_table.get((state, a), 0),
+            key=lambda a: self.q_table.get((next_state, a), 0),
         )
+
 
         temporal_difference_value = reward + self.gamma * max_q
         temporal_difference_error = temporal_difference_value - current_q
-        self.q_table[(state, action)] = (
+        self.q_table[(current_state, action)] = (
                 current_q + self.alpha * temporal_difference_error
         )
 
@@ -72,6 +74,8 @@ class QLearningAgent(BaseAgent):
         Trains the agent in a number of episodes.
         In the end stores a .pkl file of the Q(s,a) values if requested.
         """
+        rewards = []  # List to store rewards from each episode
+        episode_lengths = []  # List to store the number of steps per episode
 
         for episode in tqdm(range(episodes)):
             self.episodes_trained += 1
@@ -82,6 +86,7 @@ class QLearningAgent(BaseAgent):
             current_action = self.choose_action(current_state)
 
             total_reward = 0
+            steps_taken = 0
             done = False
 
             while not done:
@@ -91,15 +96,21 @@ class QLearningAgent(BaseAgent):
 
                 # Update the q value
                 self.update_q_value(
-                    current_state, current_action, reward,
+                    current_state,next_state, current_action, reward,
                 )
 
                 # Update the current state, current action and reward
                 current_state = next_state
                 current_action = next_action
                 total_reward += reward
+                steps_taken += 1
 
             # After each episode reduce the exploration rate
             self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
+
+            rewards.append(total_reward)
+            episode_lengths.append(steps_taken)
+
+        plot_rewards_and_lengths(rewards, episode_lengths, episodes)
 
         print("Training finished!")

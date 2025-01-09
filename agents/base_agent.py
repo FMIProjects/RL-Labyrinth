@@ -2,6 +2,7 @@ import pygame
 
 from environment.env_renderer import EnvRenderer
 from environment.base_env import BaseMazeEnv
+from visualiser import plot_test_rewards
 import pickle
 import os
 
@@ -57,6 +58,8 @@ def test_agent(env: BaseMazeEnv, agent: BaseAgent, episodes=10,verbose = False,r
     maze_renderer = EnvRenderer(env,assets_dir_path=renderer_assets_dir_path)
 
     agent.epsilon = 0.0
+
+    rewards = []
     for episode in range(episodes):
 
         env.reset()
@@ -79,3 +82,6 @@ def test_agent(env: BaseMazeEnv, agent: BaseAgent, episodes=10,verbose = False,r
             state, reward, done, _ = maze_renderer.step(action)
             state = env.get_observation()
             total_reward += reward
+        rewards.append(total_reward)
+    plot_test_rewards(rewards, episodes)
+
