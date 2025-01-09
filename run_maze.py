@@ -1,16 +1,16 @@
 # run_maze.py
 import time
 
-from environment.base_env import MazeEnv
+from environment.base_env import BaseMazeEnv
 from environment.env_renderer import EnvRenderer
 import pygame
 import sys
 
-# This is for testing porpose (There is no agent yet)
+# This is for testing porpose
 def main():
 
     # Create Environment
-    env = MazeEnv(width=20, height=20, num_keys=3,num_obstacles=0,peek_distance=2,distance_type="manhattan")
+    env = BaseMazeEnv(width=20, height=20, num_keys=3,num_obstacles=0,peek_distance=2,distance_type="manhattan")
     obs = env.reset()
 
     env_renderer = EnvRenderer(maze_env=env,cell_size=30,fps=30)
