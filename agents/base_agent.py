@@ -66,8 +66,10 @@ def test_agent(env: BaseMazeEnv, agent: BaseAgent, episodes=10,verbose = False,r
         state = env.get_observation()
         total_reward = 0
         done = False
+        skip = False
+        steps_taken = 0
 
-        while not done:
+        while not done and not skip:
 
             maze_renderer.render()
 
@@ -82,6 +84,10 @@ def test_agent(env: BaseMazeEnv, agent: BaseAgent, episodes=10,verbose = False,r
             state, reward, done, _ = maze_renderer.step(action)
             state = env.get_observation()
             total_reward += reward
+            steps_taken += 1
+            if steps_taken == 500:
+                skip = True
+
         rewards.append(total_reward)
     plot_test_rewards(rewards, episodes)
 

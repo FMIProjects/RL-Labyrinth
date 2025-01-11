@@ -58,8 +58,7 @@ class QLearningAgent(BaseAgent):
         current_q = self.q_table.get((current_state, action), 0)
 
         max_q = max(
-            range(self.env.action_space.n),
-            key=lambda a: self.q_table.get((next_state, a), 0),
+        [self.q_table.get((next_state, a), 0) for a in range(self.env.action_space.n)]
         )
 
 
